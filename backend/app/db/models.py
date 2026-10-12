@@ -296,4 +296,5 @@ class Bookmark(Base):
 
 
 from app.db import ai_models as ai_models  # noqa: E402,F401
+from app.db import audio_models as audio_models  # noqa: E402,F401
 from app.db import summary_models as summary_models  # noqa: E402,F401

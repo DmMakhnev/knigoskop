@@ -8,6 +8,7 @@ from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
 from app.api.v1.ai import router as ai_router
+from app.api.v1.audio import router as audio_router
 from app.api.v1.auth import router
 from app.api.v1.books import router as books_router
 from app.api.v1.library import router as library_router
@@ -22,6 +23,7 @@ app.include_router(library_router)
 app.include_router(books_router)
 app.include_router(reader_router)
 app.include_router(ai_router)
+app.include_router(audio_router)
 app.include_router(summaries_router)
 
 

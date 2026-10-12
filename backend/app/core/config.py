@@ -68,6 +68,15 @@ class Settings(BaseSettings):
     ai_ca_bundle: Path | None = None
     ai_timeout_seconds: int = Field(default=10, ge=1, le=120)
     ai_response_max_bytes: int = Field(default=65536, ge=1024, le=1048576)
+    knigoskop_tts_api_key: SecretStr | None = None
+    knigoskop_yandex_tts_api_key: SecretStr | None = None
+    yandex_tts_env_provider_host: str = ""
+    tts_base_url: str = ""
+    tts_env_provider_host: str = ""
+    audio_segment_chars: int = Field(default=1000, ge=100, le=3000)
+    audio_max_text_chars: int = Field(default=20000, ge=100, le=100000)
+    audio_max_bytes: int = Field(default=16 * 1024 * 1024, ge=1024, le=32 * 1024 * 1024)
+    quota_daily_tts_chars: int = Field(default=10000, ge=0)
     job_recovery_seconds: int = Field(default=10, ge=2, le=60)
     job_lease_seconds: int = Field(default=120, ge=90, le=600)
     quota_daily_jobs: int = Field(default=20, ge=0)

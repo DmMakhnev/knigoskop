@@ -19,6 +19,11 @@ def execute_job(job_id, engine=None):
     engine = engine or get_engine()
     with Session(engine) as db:
         job_type = db.scalar(select(Job.type).where(Job.id == job_id))
+    if job_type == "audio":
+        from app.domains.audio.service import execute_audio
+
+        execute_audio(job_id, engine)
+        return
     if job_type in ("processing", "prompt_test"):
         from app.domains.summaries.pipeline import execute_processing
 

@@ -204,11 +204,14 @@ def describe(db, item):
 
 def remove_item(db: Session, item: LibraryItem) -> list[str]:
     version = db.get(TextVersion, item.text_version_id)
+    from app.domains.audio.service import audio_keys
+
+    keys = audio_keys(db, item.id)
     db.delete(item)
     db.flush()
     if version.visibility == "public":
-        return []
-    keys = [version.storage_key, version.normalized_text_key]
+        return keys
+    keys += [version.storage_key, version.normalized_text_key]
     edition = db.get(Edition, version.edition_id)
     work = db.get(Work, edition.work_id)
     db.delete(version)

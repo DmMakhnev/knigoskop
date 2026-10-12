@@ -109,7 +109,12 @@ class CredentialInput(Input):
 
 
 Metric = Literal[
-    "daily_jobs", "daily_requests", "daily_input_chars", "daily_tokens", "active_jobs"
+    "daily_jobs",
+    "daily_requests",
+    "daily_input_chars",
+    "daily_tokens",
+    "active_jobs",
+    "daily_tts_chars",
 ]
 
 

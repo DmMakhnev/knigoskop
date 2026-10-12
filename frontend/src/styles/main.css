@@ -1,4 +1,4 @@
-@import '@radix-ui/themes/styles.css';
+@import "@radix-ui/themes/styles.css";
 :root {
   font-family: system-ui, sans-serif;
   color: #24352c;
@@ -91,7 +91,7 @@ input {
   border: 1px solid #879b8b;
   border-radius: 8px;
 }
-[role='alert'] {
+[role="alert"] {
   color: #952626;
 }
 details {
@@ -171,7 +171,7 @@ select {
 .library-page summary {
   cursor: pointer;
 }
-.library-page input[type='file'] {
+.library-page input[type="file"] {
   max-width: 100%;
 }
 .checkbox-label input {
@@ -331,7 +331,7 @@ select {
     flex-wrap: wrap;
     padding-top: 1rem;
   }
-  .reader-tabs [aria-selected='true'] {
+  .reader-tabs [aria-selected="true"] {
     background: #2b7151;
     color: white;
   }
@@ -373,4 +373,35 @@ select {
 }
 .summary-text {
   white-space: pre-wrap;
+}
+
+.audio-panel {
+  border: 1px solid currentColor;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+.audio-panel label {
+  display: block;
+  margin: 0.5rem 0;
+}
+.audio-panel input[type="range"] {
+  width: min(100%, 30rem);
+}
+.karaoke-text button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.15em;
+  white-space: pre-wrap;
+  text-align: left;
+}
+.karaoke-text .karaoke-active {
+  background: #ffe08a;
+  color: #222;
+  outline: 2px solid #815e00;
+}
+.karaoke-text button:focus-visible {
+  outline: 2px solid currentColor;
 }

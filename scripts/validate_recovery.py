@@ -94,6 +94,8 @@ def main():
                 "REDIS_URL=redis://redis:6379/0",
                 "AI_ALLOWED_HOSTS=[]",
                 "AI_MASTER_KEY=",
+                "KNIGOSKOP_TTS_API_KEY=",
+                "KNIGOSKOP_YANDEX_TTS_API_KEY=",
                 "KNIGOSKOP_LLM_API_KEY=",
                 "SESSION_COOKIE_SECURE=false",
                 "PUBLIC_BASE_URL=http://frontend:5173",
@@ -103,8 +105,10 @@ def main():
                 "QUOTA_DAILY_REQUESTS=1000",
                 "QUOTA_DAILY_TOKENS=1000000",
                 "QUOTA_DAILY_INPUT_CHARS=1000000",
+                "AUDIO_SEGMENT_CHARS=100",
                 "AUTH_IP_RATE_LIMIT=1000",
                 "REGISTER_RATE_LIMIT=100",
+                "TOKEN_RATE_LIMIT=1000",
                 "LOGIN_RATE_LIMIT=100",
                 "JOB_RECOVERY_SECONDS=2",
                 "PYTHONDONTWRITEBYTECODE=1",
@@ -195,6 +199,7 @@ def main():
         (directory / "migrations.log").write_text(migrate.stdout + migrate.stderr)
         for module, command in (
             ("app.domains.summaries.cli", "seed-summary-mock"),
+            ("app.domains.audio.cli", "seed-audio-mock"),
             ("app.domains.library.cli", "seed-demo"),
         ):
             docker(

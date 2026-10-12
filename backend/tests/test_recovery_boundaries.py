@@ -21,6 +21,11 @@ from app.domains.summaries.content import verify_quote
         "/api/v1/admin/quotas",
         "/api/v1/admin/ai-status",
         "/api/v1/jobs",
+        "/api/v1/audio/profiles",
+        "/api/v1/admin/audio/profiles",
+        "/api/v1/admin/audio/usage",
+        "/api/v1/me/audio-settings",
+        "/api/v1/admin/audio/voices/genvoice",
     ],
 )
 def test_anonymous_requests_are_rejected_before_database_access(client, path):

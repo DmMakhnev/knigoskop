@@ -1,32 +1,33 @@
-import { PromptAdmin } from '../features/summaries/PromptAdmin';
-import { AIInfrastructure } from '../features/ai/AIInfrastructure';
-import { messages as translations } from '../app/messages';
-import { Button } from '@radix-ui/themes';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { errorMessage, request } from '../api/auth';
-import type { User, UsersPage } from '../api/auth';
+import { AudioAdmin } from "../features/audio/AudioAdmin";
+import { PromptAdmin } from "../features/summaries/PromptAdmin";
+import { AIInfrastructure } from "../features/ai/AIInfrastructure";
+import { messages as translations } from "../app/messages";
+import { Button } from "@radix-ui/themes";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { errorMessage, request } from "../api/auth";
+import type { User, UsersPage } from "../api/auth";
 
 const t = translations.ru.auth;
 
 export function AdminPage() {
   const [offset, setOffset] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const queryClient = useQueryClient();
   const users = useQuery({
-    queryKey: ['admin-users', offset],
+    queryKey: ["admin-users", offset],
     queryFn: () => request<UsersPage>(`/admin/users?offset=${offset}&limit=20`),
     retry: false,
   });
   async function changeStatus(user: User) {
     setBusy(true);
-    setError('');
+    setError("");
     try {
-      await request(`/admin/users/${user.id}`, 'PATCH', {
-        status: user.status === 'active' ? 'blocked' : 'active',
+      await request(`/admin/users/${user.id}`, "PATCH", {
+        status: user.status === "active" ? "blocked" : "active",
       });
-      await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     } catch (failure) {
       setError(errorMessage(failure));
     } finally {
@@ -38,6 +39,7 @@ export function AdminPage() {
       <h1>{t.administration}</h1>
       <AIInfrastructure />
       <PromptAdmin />
+      <AudioAdmin />
       <h2>{t.users}</h2>
       {users.isPending && <p role="status">{t.loadingUsers}</p>}
       {(users.isError || error) && (
@@ -52,17 +54,17 @@ export function AdminPage() {
             <div>
               <strong>{user.email}</strong>
               <p>
-                {user.role === 'admin' ? t.adminRole : t.userRole} ·{' '}
-                {user.status === 'active' ? t.active : t.blocked}
+                {user.role === "admin" ? t.adminRole : t.userRole} ·{" "}
+                {user.status === "active" ? t.active : t.blocked}
               </p>
             </div>
-            {user.role !== 'admin' && (
+            {user.role !== "admin" && (
               <Button
-                color={user.status === 'active' ? 'red' : 'green'}
+                color={user.status === "active" ? "red" : "green"}
                 disabled={busy}
                 onClick={() => void changeStatus(user)}
               >
-                {user.status === 'active' ? t.block : t.unblock}
+                {user.status === "active" ? t.block : t.unblock}
                 <span className="sr-only"> {user.email}</span>
               </Button>
             )}
