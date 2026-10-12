@@ -1,0 +1,47 @@
+name: knigoskop
+services:
+  api:
+    build: ../backend
+    env_file: ../.env
+    ports: ["127.0.0.1:8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  frontend:
+    build: ../frontend
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    ports: ["127.0.0.1:5173:5173"]
+    depends_on:
+      api:
+        condition: service_healthy
+  worker:
+    build: ../backend
+    env_file: ../.env
+    command: celery -A app.workers.celery_app:celery_app worker --loglevel=info
+    depends_on:
+      redis:
+        condition: service_healthy
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-knigoskop}
+      POSTGRES_USER: ${POSTGRES_USER:-knigoskop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+volumes:
+  postgres_data:

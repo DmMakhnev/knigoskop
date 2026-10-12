@@ -1,0 +1,8 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #f5f2e9; color: #203b34; font: 18px/1.6 system-ui, sans-serif; }
+main { max-width: 880px; margin: auto; padding: 72px 24px; }
+h1 { font-size: clamp(40px, 8vw, 72px); line-height: 1.1; }
+.eyebrow { color: #50675f; }
+section { margin-top: 40px; padding: 24px; background: white; border-radius: 16px; }
+a { color: #17634f; }
+a:focus-visible { outline: 3px solid #17634f; outline-offset: 4px; }
