@@ -174,6 +174,51 @@ test("Web Speech requires consent and uses actual browser boundary events", () =
   expect((synth.speak.mock.calls[1][0] as Utterance).text).toBe("Two");
 });
 
+test("browser speech controls reset errors and ignore stopped utterance events", () => {
+  const synth = {
+    getVoices: () => [],
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    speak: vi.fn(),
+    cancel: vi.fn(),
+    pause: vi.fn(),
+    resume: vi.fn(),
+  };
+  class Utterance {
+    onerror?: (e: { error: string }) => void;
+    onboundary?: (e: { charIndex: number }) => void;
+    constructor(public text: string) {}
+  }
+  vi.stubGlobal("speechSynthesis", synth);
+  vi.stubGlobal("SpeechSynthesisUtterance", Utterance);
+  render(<BrowserSpeech text="One Two" consent complete />);
+  fireEvent.click(screen.getByRole("button", { name: "Озвучить в браузере" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Пауза голоса браузера" }),
+  );
+  expect(synth.pause).toHaveBeenCalledOnce();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Продолжить голос браузера" }),
+  );
+  expect(synth.resume).toHaveBeenCalledOnce();
+  const first = synth.speak.mock.calls[0][0] as Utterance;
+  act(() => first.onerror?.({ error: "synthesis-failed" }));
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Голос браузера недоступен",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Озвучить в браузере" }));
+  expect(screen.queryByRole("alert")).toBeNull();
+  const second = synth.speak.mock.calls[1][0] as Utterance;
+  fireEvent.click(
+    screen.getByRole("button", { name: "Остановить голос браузера" }),
+  );
+  act(() => second.onboundary?.({ charIndex: 4 }));
+  expect(document.querySelector(".karaoke-active")).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "Пауза голоса браузера" }),
+  ).toBeDisabled();
+});
+
 test("speed changes during a pending progress save are serialized", async () => {
   let resolveFirst: ((value: unknown) => void) | undefined;
   const bodies: { revision: number; playback_rate: number }[] = [];

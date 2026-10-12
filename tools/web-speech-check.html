@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Книгоскоп — проверка голоса браузера</title>
+<style>
+body{font:17px/1.5 system-ui;margin:32px auto;padding:0 20px;max-width:760px;color:#172637;background:#f6f8fa}
+label{display:block;margin:16px 0}textarea{width:100%;box-sizing:border-box;font:inherit;padding:12px}button,select{font:inherit;padding:8px;margin:4px}pre{white-space:pre-wrap;background:white;padding:16px;border-radius:8px}small{display:block}
+</style>
+<h1>Книгоскоп: голос браузера</h1>
+<p>Это отдельная проверка Web Speech API, без сервера Книгоскопа и API-ключей. Откройте файл в Edge или Chrome на Windows.</p>
+<small>Некоторые голоса используют сетевой сервис браузера. Не вводите конфиденциальные тексты. Тарифные API GenVoice, Yandex и RouterAI здесь не вызываются.</small>
+<label>Текст<textarea id="text" rows="3">Книгоскоп. Проверяем голос браузера. Первое предложение. Второе предложение.</textarea></label>
+<label>Голос <select id="voice"><option value="">По умолчанию, русский</option></select></label>
+<label>Скорость <select id="rate"><option>0.75</option><option selected>1</option><option>1.5</option><option>2</option></select></label>
+<label><input type="checkbox" id="consent"> Разрешаю озвучить этот тестовый текст средствами браузера.</label>
+<button id="play" disabled>Озвучить</button><button id="pause" disabled>Пауза</button><button id="resume" disabled>Продолжить</button><button id="stop" disabled>Остановить</button>
+<button id="refresh">Обновить список голосов</button>
+<p id="status" role="status"></p>
+<pre id="events" aria-label="События браузера"></pre>
+<script>
+'use strict';
+const el = id => document.getElementById(id);
+const supported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+let voices = [], current = null;
+function log(message) { el('events').textContent += message + '\n'; }
+function idle() { for (const id of ['pause','resume','stop']) el(id).disabled = true; el('rate').disabled = false; }
+function refresh() {
+  if (!supported) return;
+  const previous = el('voice').value;
+  voices = speechSynthesis.getVoices();
+  el('voice').replaceChildren(new Option('По умолчанию, русский',''));
+  for (const voice of voices) el('voice').add(new Option(`${voice.name} · ${voice.lang} · ${voice.localService ? 'локальный' : 'сетевой'}`,voice.voiceURI));
+  if (voices.some(v => v.voiceURI === previous)) el('voice').value = previous;
+  el('status').textContent = `Голосов: ${voices.length}. ${voices.length ? 'Можно начать проверку.' : 'Голоса пока не обнаружены; попробуйте обновить список или другой браузер.'}`;
+}
+el('consent').onchange = () => { el('play').disabled = !supported || !el('consent').checked; if (!el('consent').checked && supported) { current=null; speechSynthesis.cancel(); idle(); } };
+el('refresh').onclick = refresh;
+el('play').onclick = () => {
+  if (!supported || !el('consent').checked || !el('text').value.trim()) return;
+  current=null; speechSynthesis.cancel(); idle(); el('events').textContent='';
+  const utterance = new SpeechSynthesisUtterance(el('text').value);
+  utterance.voice = voices.find(v => v.voiceURI === el('voice').value) || null;
+  utterance.lang = utterance.voice?.lang || 'ru-RU'; utterance.rate=Number(el('rate').value);
+  current=utterance;
+  utterance.onstart=()=>{ if(current!==utterance)return; el('status').textContent='Речь запущена. Проверьте, слышен ли звук.'; el('pause').disabled=false; el('rate').disabled=true; log('start'); };
+  utterance.onboundary=e=>{ if(current===utterance)log(`boundary: ${e.name}; charIndex=${e.charIndex}; elapsedTime=${e.elapsedTime}`); };
+  utterance.onpause=()=>{ if(current===utterance)log('pause'); };
+  utterance.onresume=()=>{ if(current===utterance)log('resume'); };
+  utterance.onend=()=>{ if(current!==utterance)return; current=null; idle(); el('status').textContent='Браузер сообщил о завершении речи. Если звук был слышен, произношение проверено вами.'; log('end'); };
+  utterance.onerror=e=>{ if(current!==utterance)return; current=null; idle(); el('status').textContent='Голос недоступен: '+e.error; log('error: '+e.error); };
+  el('stop').disabled=false; el('status').textContent='Запрос речи передан браузеру.';
+  speechSynthesis.speak(utterance);
+};
+el('pause').onclick=()=>{speechSynthesis.pause();el('pause').disabled=true;el('resume').disabled=false;};
+el('resume').onclick=()=>{speechSynthesis.resume();el('pause').disabled=false;el('resume').disabled=true;};
+el('stop').onclick=()=>{current=null;speechSynthesis.cancel();idle();el('status').textContent='Остановлено пользователем.';log('stop');};
+if(supported){speechSynthesis.addEventListener('voiceschanged',refresh);refresh();}
+else {el('status').textContent='Web Speech API не поддерживается.';el('refresh').disabled=true;}
+window.addEventListener('pagehide',()=>{if(supported)speechSynthesis.cancel();});
+</script>
+</html>

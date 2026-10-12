@@ -499,6 +499,7 @@ export function BrowserSpeech({
   }, [supported]);
   function speak(start = 0) {
     if (!supported || !consent || !complete) return;
+    setError("");
     utterance.current = null;
     setBoundary(null);
     window.speechSynthesis.cancel();
@@ -523,6 +524,7 @@ export function BrowserSpeech({
       if (event.error !== "canceled" && event.error !== "interrupted")
         setError("Голос браузера недоступен.");
       setSpeaking(false);
+      setPaused(false);
       setBoundary(null);
     };
     utterance.current = value;
@@ -543,7 +545,11 @@ export function BrowserSpeech({
         <>
           <label>
             Голос браузера{" "}
-            <select value={voice} onChange={(e) => setVoice(e.target.value)}>
+            <select
+              aria-label="Голос браузера"
+              value={voice}
+              onChange={(e) => setVoice(e.target.value)}
+            >
               <option value="">По умолчанию</option>
               {voices.map((v) => (
                 <option key={v.voiceURI} value={v.voiceURI}>
@@ -555,6 +561,7 @@ export function BrowserSpeech({
           <label>
             Скорость голоса браузера{" "}
             <select
+              aria-label="Скорость голоса браузера"
               value={rate}
               disabled={speaking}
               onChange={(e) => setRate(Number(e.target.value))}
@@ -585,8 +592,10 @@ export function BrowserSpeech({
           <button
             disabled={!speaking}
             onClick={() => {
+              utterance.current = null;
               window.speechSynthesis.cancel();
               setSpeaking(false);
+              setPaused(false);
               setBoundary(null);
             }}
           >
