@@ -3,9 +3,9 @@
 import hashlib
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
@@ -16,13 +16,14 @@ from app.db.audio_models import (
     AudioSettings,
     AudioUsage,
     TTSProfile,
+    TTSTaskRoute,
 )
-from app.db.models import utcnow
+from app.db.models import AuditEvent, utcnow
 from app.db.session import get_db
 from app.domains.audio.schemas import GenerateInput, ProfileInput, ProgressInput
 from app.domains.audio.service import create_audio, own_asset
 from app.domains.auth.dependencies import require_admin, require_csrf, require_user
-from app.domains.jobs.schemas import EnabledInput
+from app.domains.jobs.schemas import CredentialInput, EnabledInput
 from app.domains.jobs.service import publish, serialize_job
 from app.integrations.storage import get_storage
 from app.integrations.tts import credential
@@ -55,11 +56,27 @@ def profile_record(profile):
 
 @router.get("/audio/profiles")
 def profiles(user=Depends(require_user), db: Session = Depends(get_db)):
+    route = db.scalar(
+        select(TTSTaskRoute).order_by(TTSTaskRoute.version.desc()).limit(1)
+    )
     return {
         "items": [
             profile_record(p)
             for p in db.scalars(
-                select(TTSProfile).where(TTSProfile.enabled.is_(True)).limit(100)
+                select(TTSProfile)
+                .where(TTSProfile.enabled.is_(True))
+                .order_by(
+                    case(
+                        (
+                            TTSProfile.id
+                            == (route.primary_profile_id if route else None),
+                            0,
+                        ),
+                        else_=1,
+                    ),
+                    TTSProfile.id,
+                )
+                .limit(100)
             )
         ],
         "fallback": "web_speech",
@@ -69,7 +86,15 @@ def profiles(user=Depends(require_user), db: Session = Depends(get_db)):
 @router.get("/admin/audio/profiles")
 def admin_profiles(admin=Depends(require_admin), db: Session = Depends(get_db)):
     return {
-        "items": [profile_record(p) for p in db.scalars(select(TTSProfile).limit(100))]
+        "items": [
+            profile_record(p)
+            | {
+                "base_url": p.base_url,
+                "host": p.host,
+                "key_mask": "••••••••" if p.encrypted_secret else None,
+            }
+            for p in db.scalars(select(TTSProfile).limit(100))
+        ]
     }
 
 
@@ -87,6 +112,12 @@ def add_profile(
         else None,
     )
     db.add(profile)
+    db.flush()
+    db.add(
+        AuditEvent(
+            actor_id=admin.id, action="tts_profile_created", entity_id=profile.id
+        )
+    )
     db.commit()
     return profile_record(profile)
 
@@ -104,12 +135,52 @@ def enable_profile(
     if not profile:
         raise AppError(404, "tts_missing", "Профиль озвучивания не найден")
     profile.enabled = payload.enabled
+    db.add(
+        AuditEvent(
+            actor_id=admin.id,
+            action="tts_profile_enabled_changed",
+            entity_id=profile.id,
+        )
+    )
+    db.commit()
+    return profile_record(profile)
+
+
+@router.put(
+    "/admin/audio/profiles/{profile_id}/credential",
+    dependencies=[Depends(require_csrf)],
+)
+def set_profile_credential(
+    profile_id: UUID,
+    payload: CredentialInput,
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    profile = db.scalar(
+        select(TTSProfile).where(TTSProfile.id == str(profile_id)).with_for_update()
+    )
+    if not profile:
+        raise AppError(404, "tts_missing", "Профиль озвучивания не найден")
+    value = payload.api_key.get_secret_value()
+    if profile.protocol == "mock" or any(c in value for c in "\r\n"):
+        raise AppError(422, "validation_error", "Ключ не подходит провайдеру")
+    profile.encrypted_secret = encrypt(value)
+    db.add(
+        AuditEvent(
+            actor_id=admin.id, action="tts_credential_changed", entity_id=profile.id
+        )
+    )
     db.commit()
     return profile_record(profile)
 
 
 @router.get("/admin/audio/usage")
-def usage(admin=Depends(require_admin), db: Session = Depends(get_db)):
+def usage(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
     return {
         "items": [
             {
@@ -124,10 +195,19 @@ def usage(admin=Depends(require_admin), db: Session = Depends(get_db)):
                     "status",
                     "estimated_cost_micros",
                     "currency",
+                    "created_at",
                 )
             }
-            for r in db.scalars(select(AudioUsage).order_by(AudioUsage.id).limit(100))
-        ]
+            for r in db.scalars(
+                select(AudioUsage)
+                .order_by(AudioUsage.created_at.desc(), AudioUsage.id)
+                .offset(offset)
+                .limit(limit)
+            )
+        ],
+        "total": db.scalar(select(func.count()).select_from(AudioUsage)),
+        "offset": offset,
+        "limit": limit,
     }
 
 
@@ -306,5 +386,21 @@ def genvoice_voices(admin=Depends(require_admin)):
                 "host": settings.tts_env_provider_host,
                 "encrypted_secret": None,
             }
+        )
+    }
+
+
+@router.post("/admin/audio/voices/genvoice", dependencies=[Depends(require_csrf)])
+def catalog_with_key(payload: CredentialInput, admin=Depends(require_admin)):
+    from app.integrations.tts import genvoice_public_voices
+
+    return {
+        "items": genvoice_public_voices(
+            {
+                "protocol": "genvoice",
+                "base_url": "https://api.genvoice.ru/v1",
+                "host": "api.genvoice.ru",
+            },
+            supplied_key=payload.api_key.get_secret_value(),
         )
     }

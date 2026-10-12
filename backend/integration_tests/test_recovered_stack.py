@@ -21,7 +21,7 @@ def test_migrations_apply_to_real_postgres_and_are_repeatable():
     with engine.connect() as connection:
         assert (
             connection.scalar(text("SELECT version_num FROM alembic_version"))
-            == "0008_audio"
+            == "0009_admin"
         )
     assert set(Base.metadata.tables) <= set(inspect(engine).get_table_names())
     assert inspect(engine).get_foreign_keys("library_items")

@@ -8,7 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -72,10 +72,12 @@ def list_sources(
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
 ):
-    rows = db.scalars(select(Source).order_by(Source.id)).all()
+    rows = db.scalars(
+        select(Source).order_by(Source.id).offset(offset).limit(limit)
+    ).all()
     return {
-        "items": [serialize_source(row) for row in rows[offset : offset + limit]],
-        "total": len(rows),
+        "items": [serialize_source(row) for row in rows],
+        "total": db.scalar(select(func.count()).select_from(Source)),
     }
 
 

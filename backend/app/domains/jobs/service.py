@@ -352,4 +352,13 @@ def usage_record(event):
             "latency_ms",
             "created_at",
         )
+    } | {
+        "units": {
+            k: v
+            for k, v in (event.units or {}).items()
+            if k in {"input_tokens", "output_tokens", "input_chars", "output_chars"}
+            and isinstance(v, int)
+            and not isinstance(v, bool)
+            and v >= 0
+        }
     }

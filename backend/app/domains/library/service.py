@@ -118,6 +118,7 @@ def import_text(
             edition_id=edition.id,
             checksum=checksum,
             original_checksum=hashlib.sha256(original).hexdigest(),
+            storage_bytes=len(original) + len(text.encode("utf-8")),
             storage_key=stored[0],
             normalized_text_key=stored[1],
             format=fmt,
@@ -162,6 +163,15 @@ def link_text(db: Session, user_id: str, version: TextVersion):
         )
     )
     if not item:
+        from app.domains.admin.limits import check_storage, library_usage, limit_for
+
+        if library_usage(db, user_id)["books"] >= limit_for(db, user_id, "books"):
+            raise AppError(429, "book_quota_exceeded", "Достигнут лимит книг")
+        if version.storage_bytes is None:
+            raise AppError(
+                409, "storage_measurement_required", "Размер старой версии ещё не учтён"
+            )
+        check_storage(db, user_id, version.storage_bytes)
         item = LibraryItem(user_id=user_id, text_version_id=version.id)
         db.add(item)
         db.flush()

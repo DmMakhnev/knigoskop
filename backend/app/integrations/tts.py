@@ -224,9 +224,11 @@ def get_provider(profile):
     raise ProviderFailure("tts_protocol_unsupported")
 
 
-def genvoice_public_voices(profile):
+def genvoice_public_voices(profile, *, supplied_key=None):
     """Read-only public voice catalog; no synthesis and no credit-spending call."""
-    key = credential(profile)
+    key = credential(profile) if supplied_key is None else supplied_key
+    if not 1 <= len(key) <= 2000 or any(c in key for c in "\r\n"):
+        raise AppError(422, "validation_error", "Проверьте ключ провайдера")
     parsed = validate_destination(
         profile["base_url"].rstrip("/") + "/api/voices/public", profile["host"]
     )

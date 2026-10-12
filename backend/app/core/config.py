@@ -77,6 +77,8 @@ class Settings(BaseSettings):
     audio_max_text_chars: int = Field(default=20000, ge=100, le=100000)
     audio_max_bytes: int = Field(default=16 * 1024 * 1024, ge=1024, le=32 * 1024 * 1024)
     quota_daily_tts_chars: int = Field(default=10000, ge=0)
+    quota_books: int = Field(default=100, ge=0)
+    quota_storage_bytes: int = Field(default=512 * 1024 * 1024, ge=0)
     job_recovery_seconds: int = Field(default=10, ge=2, le=60)
     job_lease_seconds: int = Field(default=120, ge=90, le=600)
     quota_daily_jobs: int = Field(default=20, ge=0)

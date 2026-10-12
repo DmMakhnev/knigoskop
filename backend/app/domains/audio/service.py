@@ -160,6 +160,9 @@ def create_audio(db, user, payload):
                 "Укажите цену, валюту и максимальный бюджет озвучивания",
             )
     ranges = segments(text, settings.audio_segment_chars)
+    from app.domains.admin.limits import check_storage
+
+    check_storage(db, user.id, settings.audio_max_bytes)
     # No paid retry until TTS idempotency is documented; one attempt per segment.
     if profile.price_micros_per_1000_chars is not None:
         cost = sum(
@@ -301,6 +304,9 @@ def execute_audio(job_id, engine=None):
                 job = db.get(Job, job_id)
                 if not job or job.status in TERMINAL:
                     return
+                from app.domains.admin.limits import check_storage
+
+                check_storage(db, owner_id, settings.audio_max_bytes)
                 usage = AudioUsage(
                     user_id=owner_id,
                     job_id=job_id,
@@ -323,6 +329,11 @@ def execute_audio(job_id, engine=None):
             stored = storage.put(speech.audio)
             try:
                 with Session(engine) as db:
+                    owner = db.get(User, owner_id)
+                    if not owner:
+                        storage.delete(stored)
+                        return
+                    locked_user(db, owner)
                     job = db.scalar(
                         select(Job).where(Job.id == job_id).with_for_update()
                     )
@@ -330,6 +341,8 @@ def execute_audio(job_id, engine=None):
                     if not job or job.status != "running" or not segment:
                         storage.delete(stored)
                         return
+                    check_storage(db, owner_id, len(speech.audio))
+                    segment.storage_bytes = len(speech.audio)
                     segment.storage_key, segment.checksum = (
                         stored,
                         hashlib.sha256(speech.audio).hexdigest(),

@@ -115,10 +115,12 @@ Metric = Literal[
     "daily_tokens",
     "active_jobs",
     "daily_tts_chars",
+    "books",
+    "storage_bytes",
 ]
 
 
 class QuotaInput(Input):
     metric: Metric
-    limit_value: int = Field(ge=0, le=1000000000)
+    limit_value: int = Field(ge=0, le=2000000000)
     user_id: UUID | None = None

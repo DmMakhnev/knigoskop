@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -86,6 +87,7 @@ class AudioSegment(Base):
     start_offset: Mapped[int] = mapped_column(Integer)
     end_offset: Mapped[int] = mapped_column(Integer)
     storage_key: Mapped[str | None] = mapped_column(String(32))
+    storage_bytes: Mapped[int | None] = mapped_column(BigInteger)
     checksum: Mapped[str | None] = mapped_column(String(64))
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
     timings: Mapped[list] = mapped_column(JSON, default=list)
@@ -135,6 +137,9 @@ class AudioUsage(Base):
     )
     segment_index: Mapped[int] = mapped_column(Integer)
     chars: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(32), default="outcome_unknown")
     estimated_cost_micros: Mapped[int | None] = mapped_column(Integer)
@@ -152,3 +157,18 @@ class AudioSettings(Base):
         Uuid(as_uuid=False), ForeignKey("tts_profiles.id", ondelete="SET NULL")
     )
     voice: Mapped[str | None] = mapped_column(String(100))
+
+
+class TTSTaskRoute(Base):
+    __tablename__ = "tts_task_routes"
+    id: Mapped[str] = identifier()
+    primary_profile_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("tts_profiles.id")
+    )
+    fallback_profile_id: Mapped[str | None] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("tts_profiles.id")
+    )
+    version: Mapped[int] = mapped_column(Integer, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )

@@ -407,6 +407,11 @@ def quotas(
         defaults[metric] = (
             policy.limit_value if policy else getattr(settings, "quota_" + metric)
         )
+    for metric in ("daily_tts_chars", "books", "storage_bytes"):
+        policy = db.get(QuotaPolicy, metric)
+        defaults[metric] = (
+            policy.limit_value if policy else getattr(settings, "quota_" + metric)
+        )
     overrides = paged(
         db,
         select(QuotaOverride).order_by(QuotaOverride.user_id, QuotaOverride.metric),
@@ -428,7 +433,8 @@ def set_quota(
     db: Session = Depends(get_db),
 ):
     if payload.user_id:
-        locked_user(db, required(db, User, payload.user_id))
+        required(db, User, payload.user_id)
+        db.scalar(select(User).where(User.id == str(payload.user_id)).with_for_update())
         key = (str(payload.user_id), payload.metric)
         row = db.get(QuotaOverride, key)
         if not row:
@@ -469,6 +475,12 @@ def admin_jobs(
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
+    from app.api.v1.admin import administrative_job
+
     return paged(
-        db, select(Job).order_by(Job.created_at.desc()), serialize_job, offset, limit
+        db,
+        select(Job).order_by(Job.created_at.desc()),
+        administrative_job,
+        offset,
+        limit,
     )

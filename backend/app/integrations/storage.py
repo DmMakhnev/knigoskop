@@ -14,6 +14,7 @@ class StorageBackend(Protocol):
     def put(self, content: bytes) -> str: ...
     def read(self, key: str) -> bytes: ...
     def delete(self, key: str) -> None: ...
+    def size(self, key: str) -> int: ...
 
 
 class LocalStorage:
@@ -42,6 +43,14 @@ class LocalStorage:
     def read(self, key: str) -> bytes:
         try:
             return self.path(key).read_bytes()
+        except OSError:
+            raise AppError(
+                503, "storage_unavailable", "Файл временно недоступен"
+            ) from None
+
+    def size(self, key: str) -> int:
+        try:
+            return self.path(key).stat().st_size
         except OSError:
             raise AppError(
                 503, "storage_unavailable", "Файл временно недоступен"

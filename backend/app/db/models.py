@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -128,6 +129,7 @@ class TextVersion(Base):
     )
     checksum: Mapped[str] = mapped_column(String(64))
     original_checksum: Mapped[str] = mapped_column(String(64))
+    storage_bytes: Mapped[int | None] = mapped_column(BigInteger)
     storage_key: Mapped[str] = mapped_column(String(100), unique=True)
     normalized_text_key: Mapped[str] = mapped_column(String(100), unique=True)
     format: Mapped[str] = mapped_column(String(8))

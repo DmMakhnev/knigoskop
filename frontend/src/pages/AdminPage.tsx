@@ -1,3 +1,16 @@
+import {
+  ProvidersPanel,
+  ModelsPanel,
+  RoutesPanel,
+  LimitsPanel,
+  SourcesPanel,
+} from "../features/admin/Management";
+import {
+  StatisticsPanel,
+  JobsPanel,
+  UsagePanel,
+  AuditPanel,
+} from "../features/admin/Monitoring";
 import { AudioAdmin } from "../features/audio/AudioAdmin";
 import { PromptAdmin } from "../features/summaries/PromptAdmin";
 import { AIInfrastructure } from "../features/ai/AIInfrastructure";
@@ -11,6 +24,7 @@ import type { User, UsersPage } from "../api/auth";
 const t = translations.ru.auth;
 
 export function AdminPage() {
+  const [section, setSection] = useState("users");
   const [offset, setOffset] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -19,6 +33,7 @@ export function AdminPage() {
     queryKey: ["admin-users", offset],
     queryFn: () => request<UsersPage>(`/admin/users?offset=${offset}&limit=20`),
     retry: false,
+    enabled: section === "users",
   });
   async function changeStatus(user: User) {
     setBusy(true);
@@ -35,56 +50,97 @@ export function AdminPage() {
     }
   }
   return (
-    <section>
+    <section className="admin-page">
       <h1>{t.administration}</h1>
-      <AIInfrastructure />
-      <PromptAdmin />
-      <AudioAdmin />
-      <h2>{t.users}</h2>
-      {users.isPending && <p role="status">{t.loadingUsers}</p>}
-      {(users.isError || error) && (
-        <p role="alert">{error || errorMessage(users.error)}</p>
-      )}
-      {users.isError && (
-        <Button onClick={() => void users.refetch()}>{t.tryAgain}</Button>
-      )}
-      <ul className="user-list">
-        {users.data?.items.map((user) => (
-          <li key={user.id}>
-            <div>
-              <strong>{user.email}</strong>
-              <p>
-                {user.role === "admin" ? t.adminRole : t.userRole} ·{" "}
-                {user.status === "active" ? t.active : t.blocked}
-              </p>
-            </div>
-            {user.role !== "admin" && (
-              <Button
-                color={user.status === "active" ? "red" : "green"}
-                disabled={busy}
-                onClick={() => void changeStatus(user)}
-              >
-                {user.status === "active" ? t.block : t.unblock}
-                <span className="sr-only"> {user.email}</span>
-              </Button>
-            )}
-          </li>
+      <nav className="admin-tabs" aria-label="Разделы администрирования">
+        {Object.entries({
+          users: "Пользователи",
+          statistics: "Статистика",
+          providers: "Провайдеры",
+          models: "Модели",
+          routes: "Маршруты",
+          prompts: "Промпты",
+          audio: "Озвучивание",
+          limits: "Лимиты",
+          sources: "Источники",
+          jobs: "Задачи",
+          usage: "Запросы",
+          audit: "Аудит",
+          diagnostics: "Диагностика",
+        }).map(([id, name]) => (
+          <button
+            key={id}
+            aria-pressed={section === id}
+            onClick={() => {
+              setSection(id);
+              setError("");
+            }}
+          >
+            {name}
+          </button>
         ))}
-      </ul>
-      <nav aria-label={t.userPagination} className="pagination">
-        <Button
-          disabled={offset === 0 || busy}
-          onClick={() => setOffset(Math.max(0, offset - 20))}
-        >
-          {t.previous}
-        </Button>
-        <Button
-          disabled={!users.data || offset + 20 >= users.data.total || busy}
-          onClick={() => setOffset(offset + 20)}
-        >
-          {t.next}
-        </Button>
       </nav>
+      {section === "statistics" && <StatisticsPanel />}
+      {section === "providers" && <ProvidersPanel />}
+      {section === "models" && <ModelsPanel />}
+      {section === "routes" && <RoutesPanel />}
+      {section === "prompts" && <PromptAdmin />}
+      {section === "audio" && <AudioAdmin />}
+      {section === "limits" && <LimitsPanel />}
+      {section === "sources" && <SourcesPanel />}
+      {section === "jobs" && <JobsPanel />}
+      {section === "usage" && <UsagePanel />}
+      {section === "audit" && <AuditPanel />}
+      {section === "diagnostics" && <AIInfrastructure />}
+      {section === "users" && (
+        <>
+          <h2>{t.users}</h2>
+          {users.isPending && <p role="status">{t.loadingUsers}</p>}
+          {(users.isError || error) && (
+            <p role="alert">{error || errorMessage(users.error)}</p>
+          )}
+          {users.isError && (
+            <Button onClick={() => void users.refetch()}>{t.tryAgain}</Button>
+          )}
+          <ul className="user-list">
+            {users.data?.items.map((user) => (
+              <li key={user.id}>
+                <div>
+                  <strong>{user.email}</strong>
+                  <p>
+                    {user.role === "admin" ? t.adminRole : t.userRole} ·{" "}
+                    {user.status === "active" ? t.active : t.blocked}
+                  </p>
+                </div>
+                {user.role !== "admin" && (
+                  <Button
+                    color={user.status === "active" ? "red" : "green"}
+                    disabled={busy}
+                    onClick={() => void changeStatus(user)}
+                  >
+                    {user.status === "active" ? t.block : t.unblock}
+                    <span className="sr-only"> {user.email}</span>
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+          <nav aria-label={t.userPagination} className="pagination">
+            <Button
+              disabled={offset === 0 || busy}
+              onClick={() => setOffset(Math.max(0, offset - 20))}
+            >
+              {t.previous}
+            </Button>
+            <Button
+              disabled={!users.data || offset + 20 >= users.data.total || busy}
+              onClick={() => setOffset(offset + 20)}
+            >
+              {t.next}
+            </Button>
+          </nav>
+        </>
+      )}
     </section>
   );
 }

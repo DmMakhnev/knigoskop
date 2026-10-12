@@ -405,3 +405,49 @@ select {
 .karaoke-text button:focus-visible {
   outline: 2px solid currentColor;
 }
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.admin-page h1 {
+  overflow-wrap: anywhere;
+}
+.admin-tabs button[aria-pressed="true"] {
+  font-weight: 700;
+  outline: 2px solid var(--accent-9, #356d91);
+}
+.admin-section form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 48rem;
+  margin: 1rem 0;
+}
+.admin-section label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.admin-section li {
+  padding: 0.75rem 0;
+  overflow-wrap: anywhere;
+}
+.admin-section textarea {
+  width: 100%;
+  min-height: 7rem;
+}
+.admin-table {
+  overflow-x: auto;
+}
+.admin-table th,
+.admin-table td {
+  padding: 0.5rem;
+  text-align: left;
+}
+.admin-section input,
+.admin-section select {
+  max-width: 100%;
+}
