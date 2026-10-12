@@ -1,0 +1,63 @@
+{
+  "images": [
+    {
+      "id": "sha256:5c764f2959ee7b8e9398c452b014c9c11cb360d45d7303343ce662eecc410438",
+      "tags": [
+        "knigoskop-worker:latest"
+      ],
+      "created": "2026-10-11T04:44:57.175976161Z",
+      "size_bytes": 258127630,
+      "layers": [
+        "sha256:15f1c8eb1ab18eae260c7fb6296434cbe1ff0e1e30fd814ae92a80dd54005e62",
+        "sha256:e1fa2746ad6d51e7de9171dfcbb1fe93d01d51c5d8d3623e0c3b223076dc5d23",
+        "sha256:b361fa3b97940ee89a1aab8fde1027e47ab2c2e700ca2f8d5988ad2c64386e5c",
+        "sha256:dca2a125b4903477bcb42084172cfc98865299810620ffd617bf6e12dd83d89f",
+        "sha256:6cd27de734fa6cdae73251c18241f265ade6e010b222dc2b480344c1473ad764",
+        "sha256:07a29e833b95849f431a731f0bace0239b8db88c87f982ac6c43c825cf090110",
+        "sha256:d0f7b494e25acca34b68ba803c74a4a3d8ffaca29c075dba8de31f4f74ce74a5",
+        "sha256:a15c9883918a8103213e744ea019464272be8f2231a4ffe8b53198b75822b58a",
+        "sha256:b561cbcd880e61eca4bb818be9d7fefb486ff78d342ce4d2efdc94b5d819709a",
+        "sha256:848221889e6ce8c5deeb599446cb44d828919c035230e32129138ba25f9226ba"
+      ]
+    },
+    {
+      "id": "sha256:0c3a2f2578cc5d10ab52a898a0c62b55808d8da0af89bd07cd76b84aabc58196",
+      "tags": [
+        "knigoskop-api:latest"
+      ],
+      "created": "2026-10-11T04:44:57.175976161Z",
+      "size_bytes": 258127630,
+      "layers": [
+        "sha256:15f1c8eb1ab18eae260c7fb6296434cbe1ff0e1e30fd814ae92a80dd54005e62",
+        "sha256:e1fa2746ad6d51e7de9171dfcbb1fe93d01d51c5d8d3623e0c3b223076dc5d23",
+        "sha256:b361fa3b97940ee89a1aab8fde1027e47ab2c2e700ca2f8d5988ad2c64386e5c",
+        "sha256:dca2a125b4903477bcb42084172cfc98865299810620ffd617bf6e12dd83d89f",
+        "sha256:6cd27de734fa6cdae73251c18241f265ade6e010b222dc2b480344c1473ad764",
+        "sha256:07a29e833b95849f431a731f0bace0239b8db88c87f982ac6c43c825cf090110",
+        "sha256:d0f7b494e25acca34b68ba803c74a4a3d8ffaca29c075dba8de31f4f74ce74a5",
+        "sha256:a15c9883918a8103213e744ea019464272be8f2231a4ffe8b53198b75822b58a",
+        "sha256:b561cbcd880e61eca4bb818be9d7fefb486ff78d342ce4d2efdc94b5d819709a",
+        "sha256:848221889e6ce8c5deeb599446cb44d828919c035230e32129138ba25f9226ba"
+      ]
+    },
+    {
+      "id": "sha256:a314d698688f2ed400e5df9bb3f99b5e9cba4d4b94126c85d56515f0a49a799f",
+      "tags": [
+        "knigoskop-frontend:latest"
+      ],
+      "created": "2026-10-11T03:44:02.160445908Z",
+      "size_bytes": 510182471,
+      "layers": [
+        "sha256:74d97c428c51a828f9051a7a40a53ff1fc99e54fc30323ce36760701b0b7f711",
+        "sha256:ba3263475f993ce3855e4edf69b59a64716f9b4f4b43c369113a33f0c6a1b114",
+        "sha256:50a35fcbb91b0a6dd3821fb8ee87c3e44743f5f57c4337c1721280ff811f2d2a",
+        "sha256:ff5db628aec4eaf74f091c36d7fc5f855481dfa4de3cb6c0b05b0684bfcea637",
+        "sha256:0639a1a53df5dc26966726af93869485a9f331adbbcd26201b29ff85bc16f510",
+        "sha256:bf2f4166f5bf18e605d12bc30535323b18135963d36b03ac74e1ea1adeff5561",
+        "sha256:7554d49257dfe5d3fa7227a8673112f9ce50bfb89ac6cf62489c4663873e1cab",
+        "sha256:997494e6bab9ebfe5c3fb7966ada44b112b14d47f6bc35df9862549090373403",
+        "sha256:5d690f5cf016215041759e59f05fc61ad6676368eb7834b2ab5753e188f405fe"
+      ]
+    }
+  ]
+}

@@ -1,75 +1,86 @@
 # Книгоскоп
+
 **Смотри в самую суть книги.**
 
-Многопользовательское веб-приложение для поиска и импорта книг, чтения оригинала,
-многоуровневого AI-резюмирования и озвучивания с синхронной подсветкой.
+Веб-приложение для поиска и импорта книг, чтения оригинала и многоуровневого AI-резюмирования.
 
-## Текущее состояние
-Минимальный каркас: React + TypeScript + Vite, FastAPI, стартовая страница,
-`/health`, `/api/v1/status`, Celery worker и локальная инфраструктура PostgreSQL/Redis.
-Запуск не требует внешних API-ключей. AI/TTS отключены явно.
-Авторизация, библиотека, импорт, модели БД, миграции и обработка книг ещё не реализованы.
-Это dev-окружение: публичное развёртывание и защищённая админка относятся к следующим фазам.
-Healthcheck проверяет только работу API, не готовность БД и очереди.
+## Восстановленная версия
 
-## Документы
+Сохранён код фаз 1–6: аутентификация, библиотека и пять форматов импорта, разрешённые источники,
+читалка, AI-инфраструктура, очередь и проверяемые версионированные резюме.
+Это восстановленная dev-версия, а не подтверждение полной приёмки всех фаз.
+Код фазы 7 (TTS, плеер и караоке) не найден. Прежние backend-тесты и браузерные скрипты отсутствуют.
+Новые проверки восстановления и ограничения описаны в [отчёте](docs/04_RECOVERY_REPORT.md).
+Публичный запуск заблокирован настройками до реализации производственной доставки email.
+
+## Обязательная спецификация
+
 - [Техническое задание](docs/01_TECHNICAL_REQUIREMENTS.md)
 - [Архитектура](docs/02_SYSTEM_ARCHITECTURE.md)
 - [План разработки](docs/03_CODEX_DEVELOPMENT_PLAN.md)
 
-## Структура
-- `backend/app/`: API, конфигурация, домены, интеграции, worker.
-- `backend/tests/`: проверки API.
-- `frontend/src/`: приложение, страницы, компоненты, API и стили.
-- `infra/`: Docker Compose для локального запуска.
-- `docs/`: согласованные требования.
-- `scripts/`: место для будущих служебных команд.
+## Новый локальный запуск
 
-## Запуск через Docker Compose
-Требуются Docker и Compose v2. Из корня репозитория:
+Требуются Docker Compose v2, свободные порты 15173 и 18000. Команды предназначены для новой
+локальной среды; при восстановлении не подключайте к ней действующие аварийные тома.
+Имя проекта `knigoskop-restored` отделяет её от прежнего `knigoskop`.
+
 ```bash
 cp .env.example .env
-docker compose --env-file .env -f infra/compose.yaml config
-docker compose --env-file .env -f infra/compose.yaml up --build
+# Задайте собственный локальный POSTGRES_PASSWORD в .env до первого запуска.
+docker compose --env-file .env -f infra/compose.yaml config --quiet
+docker compose --env-file .env -f infra/compose.yaml build api frontend worker migrate
+docker compose --env-file .env -f infra/compose.yaml up -d postgres redis
+docker compose --env-file .env -f infra/compose.yaml run --rm migrate
+docker compose --env-file .env -f infra/compose.yaml up -d api frontend worker
 ```
-Страница: http://localhost:5173 · API: http://localhost:8000/health · Swagger: http://localhost:8000/docs.
-PostgreSQL и Redis не публикуют порты на хосте. Сервисы приложения доступны только локально.
-Замените пример пароля в `.env` и согласуйте его с `DATABASE_URL`.
-Backend пока не подключается к PostgreSQL; Celery имеет настроенный broker, но задач ещё нет.
-Остановка: `docker compose --env-file .env -f infra/compose.yaml down`.
 
-## Запуск без Docker
-В двух терминалах, из корня:
+В этой работе сборка образов, запуск нового стека и применение миграций не выполнялись.
+Страница: http://localhost:15173; API: http://localhost:18000/health.
+`/health` проверяет работу API, а не подключение к БД или очереди.
+Cookie без Secure разрешены в примере только для локального HTTP; при HTTPS требуется `SESSION_COOKIE_SECURE=true`.
+Worker запускает один Celery beat для durable outbox; не масштабируйте этот сервис с несколькими beat.
+Файлы и письма dev-backend хранятся в отдельных Docker volumes. Письма содержат токены и не относятся к публичным артефактам.
+
+Первый администратор и mock-маршруты создаются только в новой локальной БД:
+
 ```bash
-cd backend
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -e '.[dev]'
-uvicorn app.main:app --reload
+docker compose --env-file .env -f infra/compose.yaml exec api python -m app.cli create-admin --email admin@example.com
+docker compose --env-file .env -f infra/compose.yaml exec api python -m app.domains.summaries.cli seed-summary-mock
 ```
+
+Пароль администратора вводится интерактивно. Mock не требует внешних ключей.
+Настройки RouterAI и TTS не активируются этими командами; реальных запросов при восстановлении нет.
+
+## Проверки исходников
+
+Python 3.12+, Node 22+. Из корня репозитория:
+
+```bash
+python -m venv .venv
+# Linux/macOS: source .venv/bin/activate
+# Windows PowerShell: .\.venv\Scripts\Activate.ps1
+pip install -r backend/requirements.lock
+pip install --no-deps -e 'backend[dev]'
+python -m pytest backend/tests -q
+ruff check backend
+ruff format --check backend
+```
+
 ```bash
 cd frontend
 npm ci
-npm run dev
-```
-На Windows активация venv: `.venv\Scripts\activate`.
-
-## Проверки
-```bash
-cd backend
-python -m pytest
-ruff check .
-ruff format --check .
-```
-```bash
-cd frontend
 npm test
 npm run build
+npm run lint
 ```
-CI повторяет эти проверки. Конфигурация окружения читается сервером; реальные секреты
-не коммитить. `.env.example` содержит только примеры, административные ключи будут
-реализованы позднее в соответствии с архитектурой.
 
-## Следующий шаг
-Завершить приёмку фазы 0 в Docker-окружении, затем выполнять фазу 1 по согласованному
-плану. Этот каркас не восстанавливает код из прежнего чата или несохранённой ветки.
+Backend-проверки восстановления отключают настоящие ключи и не обращаются к действующим БД/Redis.
+Это не замена утраченным интеграционным и сквозным тестам. Команды `test:*-browser` в восстановленном
+package.json ссылаются на утраченные scripts и пока неработоспособны.
+
+## Ручная резервная копия
+
+[Порядок экспорта и сохранения](docs/05_MANUAL_BACKUP.md), [история](README-backup.md).
+GitHub хранит исходники, доступные тесты, миграции, lock-файлы и документацию.
+Ключи, .env, книги пользователей, дампы, журналы, образы и тома туда не отправляются.
