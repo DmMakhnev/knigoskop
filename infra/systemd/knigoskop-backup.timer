@@ -1,0 +1,8 @@
+[Unit]
+Description=Daily Knigoskop backup at 03:15 Moscow time
+[Timer]
+OnCalendar=*-*-* 03:15:00 Europe/Moscow
+Persistent=true
+RandomizedDelaySec=120
+[Install]
+WantedBy=timers.target

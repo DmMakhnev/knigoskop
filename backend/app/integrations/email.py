@@ -45,4 +45,79 @@ class FileMailBackend:
 
 
 def get_mailer():
-    return FileMailBackend()
+    return {
+        "file": FileMailBackend,
+        "smtp": SMTPMailBackend,
+        "disabled": DisabledMailBackend,
+    }[settings.mail_backend]()
+
+
+class SMTPMailBackend:
+    def send(self, recipient: str, kind: str, token: str):
+        import smtplib
+        import ssl
+        from email.message import EmailMessage
+
+        route = "verify-email" if kind == "verify_email" else "reset-password"
+        message = EmailMessage()
+        try:
+            message["From"] = settings.smtp_from
+            message["To"] = recipient
+            message["Subject"] = (
+                "Книгоскоп: подтверждение адреса"
+                if kind == "verify_email"
+                else "Книгоскоп: восстановление пароля"
+            )
+            message.set_content(
+                "Откройте ссылку:\n"
+                + settings.public_base_url.rstrip("/")
+                + "/"
+                + route
+                + "#token="
+                + token
+            )
+            context = ssl.create_default_context()
+            if settings.smtp_tls == "ssl":
+                connection = smtplib.SMTP_SSL(
+                    settings.smtp_host,
+                    settings.smtp_port,
+                    timeout=settings.smtp_timeout_seconds,
+                    context=context,
+                )
+            else:
+                connection = smtplib.SMTP(
+                    settings.smtp_host,
+                    settings.smtp_port,
+                    timeout=settings.smtp_timeout_seconds,
+                )
+            with connection as smtp:
+                if settings.smtp_tls == "starttls":
+                    smtp.ehlo()
+                    smtp.starttls(context=context)
+                    smtp.ehlo()
+                if settings.smtp_username:
+                    smtp.login(
+                        settings.smtp_username,
+                        settings.smtp_password.get_secret_value()
+                        if settings.smtp_password
+                        else "",
+                    )
+                smtp.send_message(message)
+        except (smtplib.SMTPException, OSError, ValueError):
+            raise AppError(
+                503, "mail_unavailable", "Отправка письма временно недоступна"
+            ) from None
+
+    def purge(self, recipient: str):
+        # No local copies; the mail operator controls upstream retention.
+        return None
+
+
+class DisabledMailBackend:
+    def send(self, recipient: str, kind: str, token: str):
+        raise AppError(
+            503, "mail_disabled", "Почта на тестовом сервере ещё не подключена"
+        )
+
+    def purge(self, recipient: str):
+        return None

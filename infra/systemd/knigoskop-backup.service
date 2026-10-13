@@ -1,0 +1,9 @@
+[Unit]
+Description=Knigoskop staging maintenance backup
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/knigoskop
+ExecStart=/bin/bash /opt/knigoskop/scripts/ops/nightly_backup.sh
+UMask=0077

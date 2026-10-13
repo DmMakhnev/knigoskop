@@ -111,6 +111,10 @@ def register(
     redis=Depends(get_redis),
     mailer=Depends(get_mailer),
 ):
+    if not settings.registration_enabled:
+        raise AppError(
+            403, "registration_disabled", "Регистрация на тестовом сервере отключена"
+        )
     limit(request, redis, "register", settings.register_rate_limit, payload.email)
     check_password_policy(payload.password)
     # Hash even for duplicates; responses never disclose account existence.

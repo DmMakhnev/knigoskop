@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.db.audio_models import AudioSegment
 from app.db.models import TextVersion
 from app.db.session import get_engine
 from app.domains.library.schemas import Metadata
@@ -46,6 +47,13 @@ def main():
             keys = set()
             for version in db.scalars(select(TextVersion)):
                 keys.update([version.storage_key, version.normalized_text_key])
+            keys.update(
+                db.scalars(
+                    select(AudioSegment.storage_key).where(
+                        AudioSegment.storage_key.is_not(None)
+                    )
+                )
+            )
             removed = 0
             if storage.root.exists():
                 for path in storage.root.iterdir():

@@ -85,6 +85,34 @@ def health():
     return HealthResponse(status="ok", service="knigoskop-api")
 
 
+@app.get("/ready", tags=["operations"])
+def readiness():
+    from sqlalchemy import text
+
+    from app.core.rate_limit import get_redis
+    from app.db.session import get_engine
+
+    try:
+        with get_engine().connect() as connection:
+            if (
+                connection.scalar(text("SELECT version_num FROM alembic_version"))
+                != "0009_admin"
+            ):
+                raise RuntimeError()
+        if not get_redis().ping():
+            raise RuntimeError()
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "not_ready"})
+    return {"status": "ready"}
+
+
+@app.get("/api/v1/public-config")
+def public_config():
+    from app.core.config import settings
+
+    return {"registration_enabled": settings.registration_enabled}
+
+
 @app.exception_handler(AppError)
 async def app_error(request: Request, exc: AppError):
     return JSONResponse(

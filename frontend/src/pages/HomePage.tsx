@@ -1,17 +1,23 @@
-import { messages as translations } from '../app/messages';
-import { Button } from '@radix-ui/themes';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { getHealth } from '../api/health';
-import { messages } from '../app/messages';
+import { messages as translations } from "../app/messages";
+import { Button } from "@radix-ui/themes";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { request } from "../api/auth";
+import { getHealth } from "../api/health";
+import { messages } from "../app/messages";
 
 const t = translations.ru.auth;
 
 export function HomePage() {
   const text = messages.ru;
   const health = useQuery({
-    queryKey: ['health'],
+    queryKey: ["health"],
     queryFn: getHealth,
+    retry: false,
+  });
+  const config = useQuery({
+    queryKey: ["public-config"],
+    queryFn: () => request<{ registration_enabled: boolean }>("/public-config"),
     retry: false,
   });
   return (
@@ -20,9 +26,16 @@ export function HomePage() {
       <h1>{text.title}</h1>
       <p className="slogan">{text.slogan}</p>
       <p>{text.description}</p>
-      <p>
-        <Link to="/register">{t.createAccount}</Link>
-      </p>
+      {config.data?.registration_enabled !== false ? (
+        <p>
+          <Link to="/register">{t.createAccount}</Link>
+        </p>
+      ) : (
+        <p>
+          Закрытый тестовый сервер. Вход для созданных администратором
+          аккаунтов.
+        </p>
+      )}
       <section aria-label={t.connectionState} className="status-card">
         <p role="status">
           {health.isPending

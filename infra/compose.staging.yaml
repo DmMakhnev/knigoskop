@@ -1,0 +1,152 @@
+name: ${COMPOSE_PROJECT_NAME:-knigoskop-staging}
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+x-app: &app
+  image: knigoskop-api:${RELEASE_TAG:-phase9}
+  build: ../backend
+  environment: &app-env
+    POSTGRES_HOST: postgres
+    POSTGRES_USER: ${APP_POSTGRES_USER:?Set APP_POSTGRES_USER}
+    POSTGRES_PASSWORD: ${APP_POSTGRES_PASSWORD:?Set APP_POSTGRES_PASSWORD}
+    REDIS_URL: redis://redis:6379/0
+    APP_ENV: "${APP_ENV:-production}"
+    POSTGRES_DB: "${POSTGRES_DB:-knigoskop}"
+    PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
+    ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-[]}"
+    SESSION_COOKIE_SECURE: "${SESSION_COOKIE_SECURE:-true}"
+    MAIL_BACKEND: "${MAIL_BACKEND:-disabled}"
+    REGISTRATION_ENABLED: "${REGISTRATION_ENABLED:-false}"
+    SMTP_HOST: "${SMTP_HOST:-}"
+    SMTP_PORT: "${SMTP_PORT:-587}"
+    SMTP_TLS: "${SMTP_TLS:-starttls}"
+    SMTP_USERNAME: "${SMTP_USERNAME:-}"
+    SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+    SMTP_FROM: "${SMTP_FROM:-}"
+    AI_MASTER_KEY: "${AI_MASTER_KEY:-}"
+    AI_ALLOWED_HOSTS: "${AI_ALLOWED_HOSTS:-[]}"
+    KNIGOSKOP_LLM_API_KEY: "${KNIGOSKOP_LLM_API_KEY:-}"
+    KNIGOSKOP_TTS_API_KEY: "${KNIGOSKOP_TTS_API_KEY:-}"
+    KNIGOSKOP_YANDEX_TTS_API_KEY: "${KNIGOSKOP_YANDEX_TTS_API_KEY:-}"
+    AI_ENV_PROVIDER_HOST: "${AI_ENV_PROVIDER_HOST:-}"
+    TTS_ENV_PROVIDER_HOST: "${TTS_ENV_PROVIDER_HOST:-}"
+    TTS_BASE_URL: "${TTS_BASE_URL:-}"
+    YANDEX_TTS_ENV_PROVIDER_HOST: "${YANDEX_TTS_ENV_PROVIDER_HOST:-}"
+    AI_TIMEOUT_SECONDS: "${AI_TIMEOUT_SECONDS:-120}"
+    STORAGE_DIRECTORY: "${STORAGE_DIRECTORY:-/app/.local/files}"
+    MAIL_DIRECTORY: "${MAIL_DIRECTORY:-/app/.local/mail}"
+  volumes:
+    - files:/app/.local/files
+  read_only: true
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=256m"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  mem_limit: 768m
+  logging: *logging
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+services:
+  proxy:
+    image: knigoskop-web:${RELEASE_TAG:-phase9}
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.staging
+    environment:
+      STAGING_DOMAIN: ${STAGING_DOMAIN:?Set STAGING_DOMAIN}
+      STAGING_GATE_USER: ${STAGING_GATE_USER:-reviewer}
+      STAGING_GATE_HASH: ${STAGING_GATE_HASH:?Set STAGING_GATE_HASH}
+      NO_PROXY: "${NO_PROXY:-},api,localhost,127.0.0.1"
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile.staging:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      web: { ipv4_address: 172.30.241.10 }
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=32m"]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      api: { condition: service_healthy }
+  api:
+    <<: *app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=172.30.241.10 --no-access-log
+    networks: [backend, web]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+  worker:
+    <<: *app
+    environment:
+      <<: *app-env
+      MAIL_BACKEND: disabled
+      REGISTRATION_ENABLED: "false"
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
+    command: celery -A app.workers.celery_app:celery_app worker --loglevel=warning --beat --schedule=/tmp/celerybeat-staging
+    networks: [backend, web]
+    restart: unless-stopped
+  migrate:
+    <<: *app
+    environment:
+      <<: *app-env
+      MAIL_BACKEND: disabled
+      REGISTRATION_ENABLED: "false"
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
+    profiles: [tools]
+    command: alembic upgrade head
+    networks: [backend]
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-knigoskop}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Set POSTGRES_ADMIN_PASSWORD}
+      APP_POSTGRES_USER: ${APP_POSTGRES_USER:?Set APP_POSTGRES_USER}
+      APP_POSTGRES_PASSWORD: ${APP_POSTGRES_PASSWORD:?Set APP_POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-staging-db.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    networks: [backend]
+    mem_limit: 768m
+    restart: unless-stopped
+    logging: *logging
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy noeviction
+    volumes: ["redis_data:/data"]
+    networks: [backend]
+    mem_limit: 192m
+    restart: unless-stopped
+    logging: *logging
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+networks:
+  backend: { internal: true }
+  web:
+    ipam:
+      config: [{ subnet: 172.30.241.0/24 }]
+volumes:
+  postgres_data:
+  redis_data:
+  files:
+  caddy_data:
+  caddy_config:

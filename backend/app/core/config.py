@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,7 +9,9 @@ from sqlalchemy import URL
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=Path(__file__).resolve().parents[3] / ".env", extra="ignore"
+        env_file=Path(__file__).resolve().parents[3] / ".env",
+        extra="ignore",
+        hide_input_in_errors=True,
     )
     app_env: Literal["development", "test", "production"] = "development"
     database_url: SecretStr | None = None
@@ -87,14 +90,46 @@ class Settings(BaseSettings):
     quota_daily_tokens: int = Field(default=50000, ge=0)
     quota_active_jobs: int = Field(default=2, ge=0)
     mail_directory: Path = Path(".local/mail")
+    mail_backend: Literal["file", "smtp", "disabled"] = "file"
+    registration_enabled: bool = True
+    smtp_host: str = ""
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_tls: Literal["starttls", "ssl"] = "starttls"
+    smtp_username: str = ""
+    smtp_password: SecretStr | None = None
+    smtp_from: str = ""
+    smtp_timeout_seconds: int = Field(default=10, ge=1, le=30)
 
     @model_validator(mode="after")
     def validate_development_backend(self):
+        if self.mail_backend == "smtp" and (
+            not self.smtp_host
+            or not self.smtp_from
+            or any(c in self.smtp_from for c in "\r\n")
+        ):
+            raise ValueError("SMTP host and sender are required")
         if self.app_env == "production":
-            raise ValueError(
-                "File email backend is development-only; configure production "
-                "email delivery before public deployment."
-            )
+            parsed = urlsplit(self.public_base_url)
+            if (
+                parsed.scheme != "https"
+                or not parsed.hostname
+                or parsed.username
+                or parsed.password
+                or parsed.query
+                or parsed.fragment
+                or parsed.path not in ("", "/")
+            ):
+                raise ValueError("Production requires an HTTPS origin")
+            if not self.session_cookie_secure or self.allowed_origins != [
+                self.public_base_url.rstrip("/")
+            ]:
+                raise ValueError("Production requires secure cookies and exact origin")
+            if self.mail_backend == "file" or (
+                self.registration_enabled and self.mail_backend != "smtp"
+            ):
+                raise ValueError(
+                    "Production requires SMTP, or disabled registration and mail"
+                )
         return self
 
     @property
